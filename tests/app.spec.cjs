@@ -6,6 +6,8 @@ async function launch(){
   const electron=await _electron.launch({args:[path.resolve(__dirname,'..')],env});const page=await electron.firstWindow();await page.waitForLoadState('domcontentloaded');return {electron,page,temp};
 }
 async function screenshot(electron,name){
+  await electron.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].showInactive());
+  const page=await electron.firstWindow();await page.evaluate(async()=>{await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
   const encoded=await electron.evaluate(async({BrowserWindow})=>(await BrowserWindow.getAllWindows()[0].capturePage(undefined,{stayHidden:true,stayAwake:true})).toPNG().toString('base64'));
   expect(encoded.length).toBeGreaterThan(1000);await fs.mkdir('test-results',{recursive:true});await fs.writeFile(`test-results/${name}`,Buffer.from(encoded,'base64'));
 }
