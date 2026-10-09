@@ -1,0 +1,9 @@
+node_modules/
+release/
+_workspace/
+native/target/
+native/bin/
+playwright-report/
+test-results/
+test-documents/
+*.log
