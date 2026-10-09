@@ -28,9 +28,9 @@ async function register(paths){
   }
   return {files,errors};
 }
-function batch(files,preset){return new Promise((resolve,reject)=>{
+function batch(files,settings){return new Promise((resolve,reject)=>{
   const nativePath=app.isPackaged?path.join(process.resourcesPath,'native/ssen-hwpx.exe'):path.join(__dirname,'../native/bin/ssen-hwpx.exe');
-  const worker=new Worker(path.join(__dirname,'worker.cjs'),{workerData:{files,options:{preset,outputFolder,nativePath}},resourceLimits:{maxOldGenerationSizeMb:768}});
+  const worker=new Worker(path.join(__dirname,'worker.cjs'),{workerData:{files,options:{...settings,outputFolder,nativePath}},resourceLimits:{maxOldGenerationSizeMb:768}});
   activeWorker=worker;let settled=false;
   function finish(error,result){if(settled)return;settled=true;if(activeWorker===worker)activeWorker=null;error?reject(error):resolve(result);}
   worker.on('message',message=>{
@@ -65,8 +65,8 @@ app.whenReady().then(()=>{
   ipcMain.handle('task:start',safe(async(ids,preset)=>{
     if(activeWorker)throw Error('현재 작업이 진행 중입니다.');
     if(!Array.isArray(ids)||!ids.length||ids.length>50||!ids.every(id=>registered.has(id)))throw Error('처리할 파일을 다시 선택해 주세요.');
-    if(!['high','balanced','small'].includes(preset))throw Error('품질 설정을 확인해 주세요.');
-    return batch([...new Set(ids)].map(id=>({id,path:registered.get(id)})),preset);
+    const settings=require('../src/settings.cjs').validateSettings(preset);
+    return batch([...new Set(ids)].map(id=>({id,path:registered.get(id)})),settings);
   }));
   ipcMain.handle('task:cancel',safe(()=>{activeWorker?.postMessage('cancel');return {ok:true};}));
   ipcMain.handle('result:show',safe(async id=>{const file=outputs.get(id);if(!file)throw Error('저장된 결과가 없습니다.');await fs.access(file);shell.showItemInFolder(file);return {ok:true};}));

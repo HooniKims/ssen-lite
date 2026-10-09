@@ -4,8 +4,8 @@ HWPX 안의 JPEG·PNG 이미지를 일괄 최적화하여 새 문서로 저장�
 
 ## 다운로드
 
-- [Windows 설치 파일](https://github.com/HooniKims/ssen-lite/releases/download/v1.0.0/SsenLite-Setup-1.0.0.exe)
-- [설치 없이 실행하는 ZIP](https://github.com/HooniKims/ssen-lite/releases/download/v1.0.0/SsenLite-1.0.0-x64.zip): 전체 압축 해제 후 `SsenLite.exe` 실행
+- [Windows 설치 파일](https://github.com/HooniKims/ssen-lite/releases/download/v1.1.0/SsenLite-Setup-1.1.0.exe)
+- [설치 없이 실행하는 ZIP](https://github.com/HooniKims/ssen-lite/releases/download/v1.1.0/SsenLite-1.1.0-x64.zip): 전체 압축 해제 후 `SsenLite.exe` 실행
 - [최신 릴리즈와 변경 내용](https://github.com/HooniKims/ssen-lite/releases/latest)
 
 Windows 10/11 x64용입니다. 설치형은 앱에서 새 버전을 확인하고 내려받을 수 있습니다.
@@ -44,12 +44,22 @@ HWPX 파일을 끌어 놓거나 파일 선택으로 추가합니다. 여러 문�
 
 ![사용 안내와 지원 범위](docs/showcase/05-guide.png)
 
-[소개용 스크린샷 5장 다운로드](https://github.com/HooniKims/ssen-lite/releases/download/v1.0.0/SsenLite-Screenshots-1.0.0.zip)
+[소개용 스크린샷 7장 다운로드](https://github.com/HooniKims/ssen-lite/releases/download/v1.1.0/SsenLite-Screenshots-1.1.0.zip)
+
+### 6. 목표 용량으로 줄이기
+
+**목표 용량**을 선택하면 원래 용량이 자동으로 표시됩니다. 바, 감소율(%), MB 중 편한 방식으로 입력하면 서로 연동됩니다. 여러 문서는 각각 같은 감소율을 적용합니다. 높은 화질부터 시도하여 목표 이하로 저장하고, 화질 제한 안에서 달성하지 못하면 **목표 미달**로 표시합니다.
+
+![목표 용량과 감소율 입력](docs/showcase/06-target.png)
+
+![목표 달성 결과](docs/showcase/07-target-result.png)
+
+불투명 PNG를 JPEG로 바꾸는 옵션을 제공합니다. 투명 배경은 유지합니다. 사진에는 효과적이지만 글자나 선이 든 그림은 선명도가 낮아질 수 있습니다.
 
 ## 사용
 
 1. HWPX 파일을 선택하거나 창으로 끌어 놓습니다. 파일당 최대 500MB, 한 번에 최대 50개입니다.
-2. 화질 우선 / 균형 / 용량 우선을 선택합니다.
+2. 품질 기준(화질 우선 / 균형 / 용량 우선) 또는 목표 용량(바 / 감소율 / MB)을 선택합니다.
 3. 저장 위치를 지정하고 **가볍게 저장**을 누릅니다. 기본 위치는 각 원본 폴더입니다.
 4. `문서명_가볍게.hwpx`로 저장합니다. 이미 존재하면 번호를 붙이며 원본을 덮어쓰지 않습니다.
 
@@ -59,14 +69,16 @@ HWPX 파일을 끌어 놓거나 파일 선택으로 추가합니다. 여러 문�
 | 균형 | 2,200px | 82 |
 | 용량 우선 | 1,400px | 70 |
 
-이미지는 확대하지 않습니다. PNG는 투명도를 유지하며 팔레트 감색을 하지 않습니다. 축소한 이미지의 작은 글씨는 흐려질 수 있습니다. GIF·BMP·TIFF·벡터·애니메이션·OLE 개체는 원본 보존 대상입니다. 파일별 감소 폭은 다르며, 결과 전체가 커지면 원본 바이트로 사본을 저장합니다.
+이미지는 확대하지 않습니다. PNG는 투명도를 유지하며 팔레트 감색을 하지 않습니다. 불투명 PNG의 JPEG 변환은 선택 사항이며 목표 용량 모드에서 기본으로 켜집니다. 축소한 이미지의 작은 글씨는 흐려질 수 있습니다. GIF·BMP·TIFF·벡터·애니메이션·OLE 개체는 원본 보존 대상입니다. 파일별 감소 폭은 다르며, 결과 전체가 커지면 원본 바이트로 사본을 저장합니다.
+
+목표 모드는 JPEG 품질 98부터 60까지 탐색한 뒤 필요하면 긴 변을 최대 640px까지 단계적으로 줄입니다. 목표보다 작게 저장될 수 있으며, 정확히 맞추려고 데이터를 덧붙이지 않습니다. 원본은 항상 보존합니다.
 
 ## 문서 보존
 
 - OpenHWP의 `hwpx` Rust 크레이트로 `Contents/content.hpf`의 파일 목록을 읽습니다. 저장소 커밋과 Cargo.lock을 고정했습니다.
-- JPEG와 PNG의 **형식을 바꾸지 않고** 내장 이미지 데이터만 교체합니다.
+- JPEG·PNG 내장 이미지 데이터를 교체합니다. JPEG 변환 옵션을 켜면 불투명 PNG의 파일명과 manifest의 경로·미디어 형식도 함께 갱신합니다.
 - 글·표·서식·그림의 위치/회전/자르기 정보를 포함한 XML, 첨부 개체 등은 재직렬화하지 않습니다.
-- 저장 결과를 다시 열어 변경한 이미지 외 모든 파일의 SHA-256을 원본과 비교하고 ZIP CRC를 확인합니다.
+- 저장 결과를 다시 열어 변경한 이미지와 변환 시 갱신하는 manifest 외 모든 파일의 SHA-256을 원본과 비교하고 ZIP CRC를 확인합니다. manifest의 ID·참조·미디어 형식도 검증합니다.
 - 저장은 임시 파일에서 검증 후 새 이름으로 확정합니다. 취소 시 임시 파일을 정리합니다.
 - 전자서명·암호화·손상된 문서는 거부합니다. 내부 데이터 한도: 합계 1GB, 항목당 256MB, XML당 32MB, 이미지당 8천만 픽셀.
 - 미리보기 이미지와 텍스트는 원본 그대로 보존합니다. 파일 형식 구조 검사와 실제 한글의 모든 버전 호환성을 동일시하지 않습니다.

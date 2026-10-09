@@ -1,6 +1,25 @@
 'use strict';
 const $=id=>document.getElementById(id),files=new Map(),results=new Map();
 let busy=false,progressFile=null,finished=0,dragDepth=0;
+let mode='quality',reduction=50,lastTotal=-1,targetValid=true;
+const conversion={quality:false,target:true};
+const totalBytes=()=>[...files.values()].reduce((n,f)=>n+f.size,0);
+function syncTarget(source){
+  const total=totalBytes();
+  if(source==='mb')reduction=(1-Number($('target-mb').value)*1024*1024/total)*100;
+  else if(source)reduction=Number($(source==='slider'?'target-slider':'target-percent').value);
+  const target=total*(1-reduction/100);
+  targetValid=Number.isFinite(reduction)&&reduction>0&&reduction<100&&target>=1&&(!source||$(source==='mb'?'target-mb':source==='slider'?'target-slider':'target-percent').value!=='');
+  if(source!=='percent')$('target-percent').value=Number.isFinite(reduction)?Number(reduction.toFixed(2)):'';
+  if(source!=='slider')$('target-slider').value=Number.isFinite(reduction)?reduction:50;
+  if(source!=='mb')$('target-mb').value=targetValid?Number((target/1024/1024).toFixed(4)):'';
+  $('target-before').textContent=size(total);$('target-preview').textContent=targetValid?size(target)+' 이하':'목표를 확인해 주세요';
+  $('target-reduction-label').textContent=targetValid?`${Number(reduction.toFixed(2))}% 줄이기`:'';
+  $('target-error').textContent='0보다 크고 원래 용량보다 작은 목표를 입력해 주세요.';$('target-error').hidden=targetValid||!total;
+  $('start').disabled=!files.size||(mode==='target'&&!targetValid);lastTotal=total;
+}
+$('mode-options').onchange=()=>{conversion[mode]=$('convert-png').checked;mode=document.querySelector('[name=mode]:checked').value;$('convert-png').checked=conversion[mode];$('target-options').hidden=mode!=='target';$('quality-panel').hidden=mode==='target';syncTarget();};
+for(const [id,source] of [['target-slider','slider'],['target-percent','percent'],['target-mb','mb']])$(id).oninput=()=>syncTarget(source);
 const escapeHtml=text=>String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const size=n=>n>=1024*1024?`${(n/1024/1024).toFixed(1)} MB`:`${(n/1024).toFixed(1)} KB`;
 const hints={high:'긴 변 3,200px · JPEG 품질 90',balanced:'긴 변 2,200px · JPEG 품질 82',small:'긴 변 1,400px · JPEG 품질 70'};
@@ -15,10 +34,13 @@ function render(){
   $('document-list').innerHTML=[...files.values()].map(file=>{
     const result=results.get(file.id),processing=progressFile===file.id;
     const label=processing?'처리 중':result?.ok?(result.saved>0?'저장 완료':'원본 크기로 저장'):result?'처리 실패':busy?'대기 중':'준비됨';
-    return `<article class="document-row${processing?' processing':''}" data-id="${file.id}"><div class="document-top"><span class="document-icon">HWPX</span><div class="document-name"><b title="${escapeHtml(file.path)}">${escapeHtml(file.name)}</b><small>${label}</small></div><div class="document-size"><span>${size(file.size)}</span>${result?.ok?` → ${size(result.after)}<strong>${result.saved>0?Math.round(result.saved/result.before*100)+'% 줄었어요':'추가 감소 없음'}</strong>`:''}</div><button class="remove-file" data-action="remove" aria-label="${escapeHtml(file.name)} 목록에서 제거" ${busy?'disabled':''}>×</button></div>${result?.ok?`<div class="result-actions"><small>이미지 ${result.images}개 중 ${result.changed}개 최적화</small><button class="text-button" data-action="details">처리 내역</button><button class="text-button" data-action="open">문서 열기</button><button class="text-button" data-action="show">폴더 보기</button></div>`:result?`<p class="file-error">${escapeHtml(result.error)}</p>`:''}</article>`;
+    const targetNote=result?.ok&&result.targetBytes?`<p class="target-result ${result.targetMet?'met':'missed'}">${result.targetMet?'목표 달성':'목표 미달'} · 목표 ${size(result.targetBytes)} 이하${result.targetMet?'':'<span>화질 제한 안에서 줄인 결과입니다. 목표를 높여 다시 시도할 수 있습니다.</span>'}</p>`:'';
+    return `<article class="document-row${processing?' processing':''}" data-id="${file.id}"><div class="document-top"><span class="document-icon">HWPX</span><div class="document-name"><b title="${escapeHtml(file.path)}">${escapeHtml(file.name)}</b><small>${label}</small></div><div class="document-size"><span>${size(file.size)}</span>${result?.ok?` → ${size(result.after)}<strong>${result.saved>0?Math.round(result.saved/result.before*100)+'% 줄었어요':'추가 감소 없음'}</strong>`:''}</div><button class="remove-file" data-action="remove" aria-label="${escapeHtml(file.name)} 목록에서 제거" ${busy?'disabled':''}>×</button></div>${targetNote}${result?.ok?`<div class="result-actions"><small>이미지 ${result.images}개 중 ${result.changed}개 최적화</small><button class="text-button" data-action="details">처리 내역</button><button class="text-button" data-action="open">문서 열기</button><button class="text-button" data-action="show">폴더 보기</button></div>`:result?`<p class="file-error">${escapeHtml(result.error)}</p>`:''}</article>`;
   }).join('');
   for(const id of ['demo','pick-empty','pick-more','new-task','choose-folder','reset-folder'])$(id).disabled=busy;
-  $('quality-options').disabled=busy;$('start').hidden=busy;$('start').disabled=!has;$('cancel').hidden=!busy;$('task-progress').hidden=!busy;
+  for(const id of ['quality-options','mode-options','target-options','convert-png'])$(id).disabled=busy;
+  if(lastTotal!==totalBytes())syncTarget();
+  $('start').hidden=busy;$('start').disabled=!has||(mode==='target'&&!targetValid);$('cancel').hidden=!busy;$('task-progress').hidden=!busy;
   if(!busy){progressFile=null;stage(completed.length?'done':has?'settings':'add');}
 }
 async function add(response){if(response.error){notice(response.error);return;}for(const file of response.files){if(!files.has(file.id))files.set(file.id,file);}notice(response.errors?.join('\n'));showPage('review');render();}
@@ -43,15 +65,16 @@ $('document-list').onclick=async e=>{
   }else{const r=await(action==='open'?window.lite.openResult(id):window.lite.showResult(id));if(r.error)notice(r.error);}
 };
 $('start').onclick=async()=>{
-  if(busy||!files.size)return;busy=true;results.clear();finished=0;notice('');$('task-progress').value=0;$('cancel').disabled=false;$('cancel').textContent='작업 중지';$('run-status').textContent='문서를 읽고 있습니다.';$('summary-status').textContent='문서를 처리하고 있어요';render();
+  if(busy||!files.size||(mode==='target'&&!targetValid))return;busy=true;results.clear();finished=0;notice('');$('task-progress').value=0;$('cancel').disabled=false;$('cancel').textContent='작업 중지';$('run-status').textContent='문서를 읽고 있습니다.';$('summary-status').textContent='문서를 처리하고 있어요';render();
   try{
-    const response=await window.lite.start([...files.keys()],document.querySelector('[name=quality]:checked').value);
+    const response=await window.lite.start([...files.keys()],{mode,preset:document.querySelector('[name=quality]:checked').value,targetRatio:1-reduction/100,convertOpaquePng:$('convert-png').checked});
     if(response.error){notice(response.error);$('run-status').textContent='작업을 완료하지 못했습니다.';$('summary-status').textContent='오류 안내를 확인해 주세요';}
     else {
       for(const result of response.results)results.set(result.id,result);
       const good=response.results.filter(r=>r.ok).length,bad=response.results.length-good;
       const message=response.canceled?`작업 중지 · ${good}개 저장됨`:`${good}개 저장 완료${bad?' · '+bad+'개 처리 실패':''}`;
-      $('run-status').textContent=message;$('summary-status').textContent=message;
+      const missed=response.results.filter(r=>r.ok&&r.targetMet===false).length;
+      $('run-status').textContent=message+(missed?` · ${missed}개 목표 미달`:'');$('summary-status').textContent=$('run-status').textContent;
     }
   }catch{notice('작업을 완료하지 못했습니다. 다시 시도해 주세요.');$('run-status').textContent='작업을 완료하지 못했습니다.';$('summary-status').textContent='오류 안내를 확인해 주세요';}
   finally{busy=false;progressFile=null;render();document.querySelector('.options-scroll').scrollTop=0;}
@@ -59,7 +82,7 @@ $('start').onclick=async()=>{
 $('cancel').onclick=async()=>{$('cancel').disabled=true;$('cancel').textContent='중지하고 있어요…';$('run-status').textContent='현재 작업을 정리하고 있습니다.';await window.lite.cancel();};
 window.lite.onProgress(value=>{
   if(progressFile!==value.id){progressFile=value.id;render();}
-  const text=value.phase==='verifying'?'저장 결과 검증 중':value.phase==='reading'?'문서 읽는 중':`이미지 ${value.image}/${value.imageTotal}개 처리 중`;
+  const text=value.phase.startsWith('search')?`목표 용량 조절 중 · ${value.attempt}차${value.phase==='search-verifying'?' 검증':''}`:value.phase==='verifying'?'저장 결과 검증 중':value.phase==='reading'?'문서 읽는 중':`이미지 ${value.image}/${value.imageTotal}개 처리 중`;
   $('run-status').textContent=`${value.fileIndex}/${value.fileTotal} 문서 · ${text}`;
   const fraction=value.phase==='verifying'?.95:value.phase==='optimizing'?.1+.75*(value.image-1)/Math.max(1,value.imageTotal):0;
   $('task-progress').value=(finished+fraction)/files.size*100;

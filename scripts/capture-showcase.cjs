@@ -31,5 +31,13 @@ const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:
     await page.locator('#detail-dialog').getByRole('button',{name:'닫기',exact:true}).click();
     await page.getByRole('button',{name:'사용 안내',exact:true}).click();
     await capture('05-guide.png');
+    await page.getByRole('button',{name:'용량 줄이기',exact:true}).click();
+    await page.locator('#new-task').click();await page.locator('#demo').click();await page.locator('.document-row').waitFor();
+    await page.locator('[name=mode][value=target]').check();
+    await capture('06-target.png');
+    await page.locator('#start').click();
+    await page.waitForFunction(()=>document.querySelector('#run-status').textContent==='1개 저장 완료',null,{timeout:120000});
+    assert.ok((await page.locator('.target-result').textContent()).includes('목표 달성'));
+    await capture('07-target-result.png');
   }finally{await electron.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

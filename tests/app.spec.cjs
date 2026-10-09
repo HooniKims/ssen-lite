@@ -46,3 +46,27 @@ test('batch isolates damaged document, cancellation allows retry',async()=>{
     await page.locator('#start').click();await page.locator('#cancel').dispatchEvent('click');await expect(page.locator('#run-status')).toContainText('작업 중지',{timeout:45000});await expect(page.locator('#start')).toBeVisible();
   }finally{await electron.close();}
 });
+
+test('target controls stay synchronized, validate inputs and save a real target result',async()=>{
+  const {electron,page,temp}=await launch();
+  try{
+    await page.locator('#demo').click();await page.locator('.document-row').waitFor();
+    await page.locator('[name=mode][value=target]').check();await expect(page.locator('#convert-png')).toBeChecked();
+    await page.locator('#target-percent').fill('65');await expect(page.locator('#target-slider')).toHaveValue('65');
+    const total=await page.locator('.document-row b').getAttribute('title'),bytes=(await fs.stat(total)).size;
+    expect(Number(await page.locator('#target-mb').inputValue())).toBeCloseTo(bytes*.35/1024/1024,3);
+    await page.locator('#target-mb').fill('1');expect(Number(await page.locator('#target-percent').inputValue())).toBeCloseTo((1-1024*1024/bytes)*100,2);
+    await page.locator('#target-slider').focus();await page.locator('#target-slider').press('Home');await page.locator('#target-slider').press('ArrowRight');await expect(page.locator('#target-percent')).toHaveValue('1.1');
+    await page.locator('#target-mb').fill('');await expect(page.locator('#start')).toBeDisabled();
+    await page.locator('#target-percent').fill('100');await expect(page.locator('#start')).toBeDisabled();await expect(page.locator('#target-error')).toBeVisible();
+    await page.locator('#target-percent').fill('50');await expect(page.locator('#start')).toBeEnabled();
+    await electron.evaluate(({dialog},folder)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[folder]});},temp);await page.locator('#choose-folder').click();
+    await page.locator('#start').click();await expect(page.locator('[name=mode][value=target]')).toBeDisabled();
+    await expect(page.locator('#run-status')).toHaveText('1개 저장 완료',{timeout:60000});await expect(page.locator('.target-result')).toContainText('목표 달성');
+    const output=(await fs.readdir(temp)).find(n=>n.endsWith('.hwpx'));expect((await fs.stat(path.join(temp,output))).size).toBeLessThanOrEqual(bytes*.5);
+    await screenshot(electron,'05-target.png');
+    await electron.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1040,720));
+    await screenshot(electron,'06-target-compact.png');expect(await page.locator('#start').evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight)).toBe(true);
+    await page.locator('#target-mb').fill('0.0001');await page.locator('#start').click();await expect(page.locator('#run-status')).toContainText('목표 미달',{timeout:60000});await expect(page.locator('.target-result')).toContainText('목표 미달');
+  }finally{await page.evaluate(()=>window.lite.cancel()).catch(()=>{});await electron.close();}
+});

@@ -7,3 +7,5 @@ playwright-report/
 test-results/
 test-documents/
 *.log
+__pycache__/
+*.pyc

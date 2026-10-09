@@ -1,6 +1,6 @@
 {
   "name": "ssen-lite",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "HWPX 문서 속 이미지 용량을 일괄로 줄이는 오프라인 앱",
   "author": "HooniKim",
   "private": true,
@@ -30,12 +30,39 @@
   "build": {
     "appId": "kr.hoonikim.ssenlite",
     "productName": "쎈Lite",
-    "directories": { "output": "release" },
-    "files": ["app/**/*", "src/**/*", "assets/**/*", "package.json"],
-    "extraResources": [{ "from": "native/bin", "to": "native", "filter": ["*.exe"] }],
-    "asarUnpack": ["node_modules/sharp/**/*", "node_modules/@img/**/*"],
-    "publish": { "provider": "github", "owner": "HooniKims", "repo": "ssen-lite", "releaseType": "release" },
-    "win": { "icon": "assets/icon.ico", "executableName": "SsenLite", "artifactName": "SsenLite-${version}-${arch}.${ext}" },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "app/**/*",
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "native/bin",
+        "to": "native",
+        "filter": [
+          "*.exe"
+        ]
+      }
+    ],
+    "asarUnpack": [
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "HooniKims",
+      "repo": "ssen-lite",
+      "releaseType": "release"
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "executableName": "SsenLite",
+      "artifactName": "SsenLite-${version}-${arch}.${ext}"
+    },
     "nsis": {
       "artifactName": "SsenLite-Setup-${version}.exe",
       "oneClick": false,
@@ -44,7 +71,9 @@
       "createDesktopShortcut": true,
       "shortcutName": "쎈Lite",
       "runAfterFinish": true,
-      "installerLanguages": ["ko_KR"],
+      "installerLanguages": [
+        "ko_KR"
+      ],
       "include": "build/installer.nsh",
       "installerSidebar": "build/installer/sidebar.bmp",
       "installerHeader": "build/installer/header.bmp"

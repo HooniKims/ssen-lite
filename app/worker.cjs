@@ -1,6 +1,7 @@
 'use strict';
 const {parentPort,workerData}=require('node:worker_threads');
 const {optimizeFile}=require('../src/optimizer.cjs');
+const {optimizeToTarget}=require('../src/target-optimizer.cjs');
 let canceled=false;parentPort.on('message',message=>{if(message==='cancel')canceled=true;});
 (async()=>{
   const results=[];
@@ -9,7 +10,8 @@ let canceled=false;parentPort.on('message',message=>{if(message==='cancel')cance
     const file=workerData.files[i];
     parentPort.postMessage({type:'progress',id:file.id,fileIndex:i+1,fileTotal:workerData.files.length,phase:'reading'});
     try{
-      const result=await optimizeFile(file.path,{...workerData.options,isCanceled:()=>canceled,onProgress:p=>parentPort.postMessage({type:'progress',id:file.id,fileIndex:i+1,fileTotal:workerData.files.length,...p})});
+      const optimize=workerData.options.mode==='target'?optimizeToTarget:optimizeFile;
+      const result=await optimize(file.path,{...workerData.options,isCanceled:()=>canceled,onProgress:p=>parentPort.postMessage({type:'progress',id:file.id,fileIndex:i+1,fileTotal:workerData.files.length,...p})});
       results.push({id:file.id,ok:true,...result});
     }catch(e){
       if(e.code==='CANCELED')break;
